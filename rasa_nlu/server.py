@@ -209,6 +209,44 @@ class RasaNLU(object):
         """Main Rasa route to check if the server is online"""
         return "hello from Rasa NLU: " + __version__
 
+    @app.route("/nlu", methods=['GET', 'POST', 'OPTIONS'])
+    @requires_auth
+    @check_cors
+    @inlineCallbacks
+    def parse(self, request):
+        request.setHeader('Content-Type', 'application/json')
+        if request.method.decode('utf-8', 'strict') == 'GET':
+            request_params = decode_parameters(request)
+        else:
+            request_params = simplejson.loads(request.content.read().decode('utf-8', 'strict'))
+            request_params = request_params['request']
+
+        if 'query' in request_params:
+            request_params['q'] = request_params.pop('query')
+
+        if 'q' not in request_params:
+            request.setResponseCode(404)
+            dumped = json_to_string(
+                    {"error": "Invalid parse parameter specified"})
+            returnValue(dumped)
+        else:
+            data = self.data_router.extract(request_params)
+            try:
+                request.setResponseCode(200)
+                response = yield (
+                    self.data_router.parse(data)
+                    if self._testing
+                    else threads.deferToThread(self.data_router.parse, data)
+                )
+                returnValue(json_to_string(response))
+            except InvalidProjectError as e:
+                request.setResponseCode(404)
+                returnValue(json_to_string({"error": "{}".format(e)}))
+            except Exception as e:
+                request.setResponseCode(500)
+                logger.exception(e)
+                returnValue(json_to_string({"error": "{}".format(e)}))
+
     @app.route("/parse", methods=['GET', 'POST', 'OPTIONS'])
     @requires_auth
     @check_cors
@@ -227,7 +265,10 @@ class RasaNLU(object):
         if 'q' not in request_params:
             request.setResponseCode(404)
             dumped = json_to_string(
-                    {"error": "Invalid parse parameter specified"})
+                    {"error_msg": "Invalid parse parameter specified",
+                     "error_code": -1
+                     }
+            )
             returnValue(dumped)
         else:
             data = self.data_router.extract(request_params)
@@ -239,7 +280,10 @@ class RasaNLU(object):
                 returnValue(json_to_string(response))
             except InvalidProjectError as e:
                 request.setResponseCode(404)
-                returnValue(json_to_string({"error": "{}".format(e)}))
+                returnValue(json_to_string({
+                                            "error_msg": "{}".format(e),
+                                            "error_code": -2
+                                            }))
             except Exception as e:
                 request.setResponseCode(500)
                 logger.exception(e)
