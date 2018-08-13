@@ -9,3 +9,4 @@ pipeline:
 - name: "intent_entity_featurizer_regex"
 - name: "intent_featurizer_mitie"
 - name: "intent_classifier_sklearn"
+- name: "response_component"

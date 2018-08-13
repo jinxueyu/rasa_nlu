@@ -41,6 +41,7 @@ from rasa_nlu.tokenizers.jieba_tokenizer import JiebaTokenizer
 from rasa_nlu.tokenizers.whitespace_tokenizer import WhitespaceTokenizer
 from rasa_nlu.utils.mitie_utils import MitieNLP
 from rasa_nlu.utils.spacy_utils import SpacyNLP
+from rasa_nlu.utils.response_utils import ResponseComponent
 
 if typing.TYPE_CHECKING:
     from rasa_nlu.components import Component
@@ -57,7 +58,8 @@ component_classes = [
     CountVectorsFeaturizer,
     MitieTokenizer, SpacyTokenizer, WhitespaceTokenizer, JiebaTokenizer,
     SklearnIntentClassifier, MitieIntentClassifier, KeywordIntentClassifier,
-    EmbeddingIntentClassifier
+    EmbeddingIntentClassifier,
+    ResponseComponent
 ]
 
 # Mapping from a components name to its class to allow name based lookup.

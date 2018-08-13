@@ -1,0 +1,121 @@
+baidu request
+ {
+     u'log_id': u'dmkit_648111',
+     u'bot_id': u'8498',
+     u'bot_session': u'{"session_id":"1"}',
+     u'version': u'2.0',
+
+     u'request': {
+        u'user_id': u'77710',
+        u'query': u'ppp',
+        u'query_info': {u'source': u'ASR', u'type': u'TEXT', u'asr_candidates': []},
+        u'bernard_level': 0,
+        u'updates': u'',
+        u'client_session': u'{"client_results":"", "candidate_options":[]}'
+    }
+}
+
+baidu response
+{
+	"error_msg": "ok",
+	"error_code": 0,
+	"result": {
+		"log_id": "dmkit_822045",
+		"bot_id": "8498",
+		"bot_session": "",
+		"interaction_id": "interaction-1533878612894-3145241309-8013-2",
+
+		"version": "2.0",
+		"timestamp": "2018-08-10 13:23:32.894"
+
+		"response": {
+			"schema": {
+				"domain_confidence": 0,
+				"intent": "ASK_SKILL",
+				"intent_confidence": 100,
+
+				"slots": [{
+					"word_type": "",
+					"confidence": 100,
+					"length": 1,
+					"name": "user_person",
+					"original_word": "你",
+					"sub_slots": [],
+					"session_offset": 0,
+					"begin": 0,
+					"normalized_word": "你",
+					"merge_method": "updated"
+				}, {
+					"word_type": "",
+					"confidence": 100,
+					"length": 2,
+					"name": "user_skill",
+					"original_word": "写诗",
+					"sub_slots": [],
+					"session_offset": 0,
+					"begin": 2,
+					"normalized_word": "写诗",
+					"merge_method": "updated"
+				}]
+			},
+			"qu_res": {},
+			"action_list": [{
+				"action_id": "",
+				"refine_detail": {
+					"option_list": [],
+					"interact": "",
+					"clarify_reason": ""
+				},
+				"confidence": 0,
+				"custom_reply": "",
+				"say": "",
+				"type": "understood"
+			}]
+		}
+	}
+}
+
+
+{
+  "error_code": -1,
+  "error_msg": "",
+  "result": {
+    "log_id": "dmkit_420613",
+    "timestamp": "2018-08-13 13:38:30",
+    "version": "2.0",
+    "bot_session": "{\"session_id\":\"1\"}",
+    "response": {
+      "project": "default",
+      "entities": [],
+      "intent": {
+        "confidence": 0.3540646802062403,
+        "name": "medical"
+      },
+      "text": "zzz",
+      "model": "model_20180813-124730",
+      "intent_ranking": [
+        {
+          "confidence": 0.3540646802062403,
+          "name": "medical"
+        },
+        {
+          "confidence": 0.32201084952177916,
+          "name": "affirm"
+        },
+        {
+          "confidence": 0.11633628363865545,
+          "name": "restaurant_search"
+        },
+        {
+          "confidence": 0.1144743720944901,
+          "name": "goodbye"
+        },
+        {
+          "confidence": 0.09311381453883517,
+          "name": "greet"
+        }
+      ]
+    },
+    "bot_id": "8498"
+  }
+}

@@ -11,6 +11,7 @@ import simplejson
 import six
 from builtins import str
 from klein import Klein
+import time
 from twisted.internet import reactor, threads
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -182,7 +183,7 @@ class RasaNLU(object):
         self._configure_logging(loglevel, logfile)
 
         self.default_model_config = self._load_default_config(
-                default_config_path)
+            default_config_path)
 
         self.data_router = data_router
         self._testing = testing
@@ -209,17 +210,17 @@ class RasaNLU(object):
         """Main Rasa route to check if the server is online"""
         return "hello from Rasa NLU: " + __version__
 
-    @app.route("/nlu", methods=['GET', 'POST', 'OPTIONS'])
+    @app.route("/parse", methods=['GET', 'POST', 'OPTIONS'])
     @requires_auth
     @check_cors
     @inlineCallbacks
     def parse(self, request):
+
         request.setHeader('Content-Type', 'application/json')
         if request.method.decode('utf-8', 'strict') == 'GET':
             request_params = decode_parameters(request)
         else:
             request_params = simplejson.loads(request.content.read().decode('utf-8', 'strict'))
-            request_params = request_params['request']
 
         if 'query' in request_params:
             request_params['q'] = request_params.pop('query')
@@ -227,7 +228,7 @@ class RasaNLU(object):
         if 'q' not in request_params:
             request.setResponseCode(404)
             dumped = json_to_string(
-                    {"error": "Invalid parse parameter specified"})
+                {"error": "Invalid parse parameter specified"})
             returnValue(dumped)
         else:
             data = self.data_router.extract(request_params)
@@ -247,47 +248,96 @@ class RasaNLU(object):
                 logger.exception(e)
                 returnValue(json_to_string({"error": "{}".format(e)}))
 
-    @app.route("/parse", methods=['GET', 'POST', 'OPTIONS'])
+    @app.route("/nlu", methods=['GET', 'POST', 'OPTIONS'])
     @requires_auth
     @check_cors
     @inlineCallbacks
-    def parse(self, request):
+    def nlu(self, request):
+
+        resp = {"error_msg": "", "error_code": 0, 'result': {}}
+
         request.setHeader('Content-Type', 'application/json')
         if request.method.decode('utf-8', 'strict') == 'GET':
             request_params = decode_parameters(request)
         else:
             request_params = simplejson.loads(
-                    request.content.read().decode('utf-8', 'strict'))
+                request.content.read().decode('utf-8', 'strict'))
 
-        if 'query' in request_params:
-            request_params['q'] = request_params.pop('query')
+            resp['result']['log_id'] = request_params['log_id']
+            resp['result']['bot_id'] = request_params['bot_id']
+            resp['result']['bot_session'] = request_params['bot_session']
+            resp['result']['version'] = request_params['version']
+            resp['result']['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S')
 
-        if 'q' not in request_params:
+            query_params = request_params['request']
+
+        if 'query' in query_params:
+            query_params['q'] = query_params.pop('query')
+
+        if 'q' not in query_params:
             request.setResponseCode(404)
             dumped = json_to_string(
-                    {"error_msg": "Invalid parse parameter specified",
-                     "error_code": -1
-                     }
+                {"error_msg": "Invalid parse parameter specified",
+                 "error_code": -1
+                 }
             )
             returnValue(dumped)
         else:
-            data = self.data_router.extract(request_params)
+            data = self.data_router.extract(query_params)
             try:
                 request.setResponseCode(200)
                 response = yield (self.data_router.parse(data) if self._testing
                                   else threads.deferToThread(
-                                  self.data_router.parse, data))
-                returnValue(json_to_string(response))
+                    self.data_router.parse, data))
+
+                resp['result']['response'] = response
+
+                bot_session = request_params['bot_session']
+
+                bot_session = simplejson.loads(bot_session)
+
+                # bot_session = {}
+                # bot_session["dialog_state"] = {
+                #     "contexts": {},
+                #     "intents": [{
+                #         "index": 0,
+                #         "name": ""
+                #     }],
+                #     "user_slots": {}
+                # }
+
+                len_of_intents = len(bot_session['dialog_state']['intents'])
+                bot_session['dialog_state']['intents'].append(
+                    {"index": len_of_intents,
+                     "name": response["intent"]["name"]
+                     }
+                )
+
+                user_slots = bot_session['dialog_state']["user_slots"]
+
+                resp_slots = response["schema"]["slots"]
+                for slot in resp_slots:
+                    if slot['name'] not in user_slots:
+                        user_slots[slot['name']] = {}
+                        user_slots[slot['name']]['values'] = {}
+
+                    req_slot = user_slots[slot['name']]
+                    req_slot['stat'] = ''
+                    req_slot['values'][slot['original_word']] = slot
+
+                resp['result']['bot_session'] = json_to_string(bot_session)
+                returnValue(json_to_string(resp))
             except InvalidProjectError as e:
                 request.setResponseCode(404)
                 returnValue(json_to_string({
-                                            "error_msg": "{}".format(e),
-                                            "error_code": -2
-                                            }))
+                    "error_msg": "{}".format(e),
+                    "error_code": -2
+                }))
             except Exception as e:
                 request.setResponseCode(500)
                 logger.exception(e)
-                returnValue(json_to_string({"error": "{}".format(e)}))
+                returnValue(json_to_string({"error_msg": "{}".format(e),
+                                            "error_code": -3}))
 
     @app.route("/version", methods=['GET', 'OPTIONS'])
     @requires_auth
@@ -395,8 +445,8 @@ class RasaNLU(object):
             request.setResponseCode(200)
 
             response = yield self.data_router.start_train_process(
-                    data_file, project,
-                    RasaNLUModelConfig(model_config), model_name)
+                data_file, project,
+                RasaNLUModelConfig(model_config), model_name)
 
             returnValue(json_to_string({'info': 'new model trained: {}'
                                                 ''.format(response)}))
@@ -419,7 +469,7 @@ class RasaNLU(object):
         params = {
             key.decode('utf-8', 'strict'): value[0].decode('utf-8', 'strict')
             for key, value in request.args.items()
-        }
+            }
 
         request.setHeader('Content-Type', 'application/json')
 
@@ -440,7 +490,7 @@ class RasaNLU(object):
         params = {
             key.decode('utf-8', 'strict'): value[0].decode('utf-8', 'strict')
             for key, value in request.args.items()
-        }
+            }
 
         request.setHeader('Content-Type', 'application/json')
         try:
@@ -475,13 +525,13 @@ if __name__ == '__main__':
         router._pre_load(pre_load)
 
     rasa = RasaNLU(
-            router,
-            cmdline_args.loglevel,
-            cmdline_args.write,
-            cmdline_args.num_threads,
-            cmdline_args.token,
-            cmdline_args.cors,
-            default_config_path=cmdline_args.config
+        router,
+        cmdline_args.loglevel,
+        cmdline_args.write,
+        cmdline_args.num_threads,
+        cmdline_args.token,
+        cmdline_args.cors,
+        default_config_path=cmdline_args.config
     )
 
     logger.info('Started http server on port %s' % cmdline_args.port)

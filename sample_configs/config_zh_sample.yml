@@ -1,0 +1,6 @@
+language: "zh"
+
+pipeline:
+- name: "tokenizer_jieba"
+- name: "intent_entity_featurizer_regex"
+- name: "intent_classifier_sklearn"
