@@ -296,21 +296,17 @@ class RasaNLU(object):
 
                 bot_session = simplejson.loads(bot_session)
 
-                # bot_session = {}
-                # bot_session["dialog_state"] = {
-                #     "contexts": {},
-                #     "intents": [{
-                #         "index": 0,
-                #         "name": ""
-                #     }],
-                #     "user_slots": {}
-                # }
+                if 'dialog_state' not in bot_session:
+                    bot_session['dialog_state'] = {}
+                    bot_session['dialog_state']['intents'] = []
+                    bot_session['dialog_state']["user_slots"] = {}
 
                 len_of_intents = len(bot_session['dialog_state']['intents'])
                 bot_session['dialog_state']['intents'].append(
-                    {"index": len_of_intents,
-                     "name": response["intent"]["name"]
-                     }
+                    {
+                        "index": len_of_intents,
+                        "name": response["intent"]["name"]
+                    }
                 )
 
                 user_slots = bot_session['dialog_state']["user_slots"]
@@ -321,9 +317,56 @@ class RasaNLU(object):
                         user_slots[slot['name']] = {}
                         user_slots[slot['name']]['values'] = {}
 
-                    req_slot = user_slots[slot['name']]
-                    req_slot['stat'] = ''
-                    req_slot['values'][slot['original_word']] = slot
+                    user_slot = user_slots[slot['name']]
+                    user_slot['state'] = 2
+
+                    word_slot = {
+                        "begin": slot['begin'],
+                        "length": slot['length'],
+                        "confidence": slot['confidence'],
+                        "normalized_name": slot['normalized_word'],
+                        "original_name": slot['original_word'],
+                        "session_offest": 0,
+                        "state": 2,
+                        "merge_method": "updated",
+                        "word_type": ""
+                    }
+                    user_slot['values'][slot['normalized_word']] = word_slot
+
+                if 'interactions' not in bot_session:
+                    bot_session['interactions'] = []
+
+                interaction = {
+                    'interaction_id': 1222,
+                    'request': {
+                        'query': query_params['q'],
+                        'query_info': query_params['query_info'],
+                        "client_session": query_params['client_session'],
+                        "user_id": query_params['user_id'],
+                        "hyper_params": {},
+                        "updates": "",
+                        "bernard_level": 0
+                    },
+                    'response': {
+                        'action_list': [
+                            {
+                                "action_id": "",
+                                "confidence": 0.0,
+                                "custom_reply": "",
+                                "refine_detail": {
+                                    "clarify_reason": "",
+                                    "interact": "",
+                                    "option_list": []
+                                },
+                                "say": "",
+                                "type": "understood"
+                            }
+                        ]
+                    },
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+                }
+
+                bot_session['interactions'].insert(0, interaction)
 
                 resp['result']['bot_session'] = json_to_string(bot_session)
                 returnValue(json_to_string(resp))
